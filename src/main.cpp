@@ -50,7 +50,11 @@ void CreateTriangle()
 
     Mesh *obj1 = new Mesh();
     obj1->CreateMesh(vertices, indices, 12, 12);
-    meshList.push_back(obj1);
+
+    for (int i = 0; i < 3; i++)
+    {
+        meshList.push_back(obj1);
+    }
 }
 
 void CreateShaders()
@@ -88,16 +92,26 @@ int main()
         uniformModel = shaderList[0]->GetUniformLocation("model");
         uniformProjection = shaderList[0]->GetUniformLocation("projection");
 
+        glm::vec3 pyramidPositions[] =
+        {
+            glm::vec3(0.0f, 0.0f, -5.5f),
+            glm::vec3(0.5f, 0.4f, -5.5f),
+            glm::vec3(-0.9f, -0.3f, -5.5f),
+        };
+
         // Object
-        glm::mat4 model(1.0f);
-        model = glm::translate(model, glm::vec3(0.3f, 0.0f, -2.5f));
-        // model = glm::rotate(model, glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        model = glm::scale(model, glm::vec3(0.4f, 0.4f, 1.0f));
+        for (int i = 0; i < 3; i++)
+        {
+            glm::mat4 model(1.0f);
+            model = glm::translate(model, pyramidPositions[i]);
+            // model = glm::rotate(model, glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+            model = glm::scale(model, glm::vec3(0.4f, 0.4f, 1.0f));
 
-        glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-        glUniformMatrix4fv(uniformProjection, 1, GL_FALSE, glm::value_ptr(projection));
+            glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+            glUniformMatrix4fv(uniformProjection, 1, GL_FALSE, glm::value_ptr(projection));
 
-        meshList[0]->RenderMesh();
+            meshList[i]->RenderMesh();
+        }
 
         glUseProgram(0);
         // end draw
