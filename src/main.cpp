@@ -68,12 +68,31 @@ void CreateShaders()
     shaderList.push_back(shader1);
 }
 
+void CreateOBJ()
+{
+    Mesh *obj1 = new Mesh();
+    bool loaded = obj1->CreateMeshFromOBJ("Models/suzanne.obj");
+
+    if (loaded)
+    {
+        for (int i = 0; i < 10; i++)
+        {
+            meshList.push_back(obj1);
+        }
+    }
+    else
+    {
+        std::cout << "Failed to load model" << std::endl;
+    }
+}
+
 int main()
 {
     mainWindow = Window(WIDTH, HEIGHT, 3, 3);
     mainWindow.initialise();
 
-    CreateTriangle();
+    // CreateTriangle();
+    CreateOBJ();
     CreateShaders();
 
     GLuint uniformModel = 0;
@@ -94,7 +113,7 @@ int main()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
     int width1, height1, nrChannels1;
-    unsigned char *data1 = stbi_load("Textures/cloth.jpg", &width1, &height1, &nrChannels1, 0);
+    unsigned char *data1 = stbi_load("Textures/uvmap.png", &width1, &height1, &nrChannels1, 0);
 
     if (!data1)
     {
