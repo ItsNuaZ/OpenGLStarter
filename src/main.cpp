@@ -86,6 +86,8 @@ void CreateOBJ()
     }
 }
 
+glm::vec3 lightColour = glm::vec3(0.0f, 1.0f, 1.0f);
+
 int main()
 {
     mainWindow = Window(WIDTH, HEIGHT, 3, 3);
@@ -178,6 +180,9 @@ int main()
             glm::vec3(1.5f, 0.2f, -1.5f),
             glm::vec3(-1.3f, 1.0f, -1.5f)
         };
+
+        // Light
+        glUniform3fv(shaderList[0]->GetUniformLocation("lightColour"), 1, (GLfloat *)&lightColour);
 
         for (int i = 0; i < 10; i++)
         {
