@@ -26,6 +26,12 @@ Window mainWindow;
 std::vector<Mesh *> meshList;
 std::vector<Shader *> shaderList;
 
+Mesh* light;
+static const char* lightVShader = "Shaders/lightShader.vert";
+static const char* lightFShader = "Shaders/lightShader.frag";
+
+float yaw = -90.0f, pitch = 0.0f;
+
 // Vertex Shader
 static const char *vShader = "Shaders/shader.vert";
 
@@ -66,6 +72,10 @@ void CreateShaders()
     Shader *shader1 = new Shader();
     shader1->CreateFromFiles(vShader, fShader);
     shaderList.push_back(shader1);
+    
+    Shader *shader2 = new Shader();
+    shader2->CreateFromFiles(lightVShader, lightFShader);
+    shaderList.push_back(shader2);
 }
 
 void CreateOBJ()
@@ -84,9 +94,47 @@ void CreateOBJ()
     {
         std::cout << "Failed to load model" << std::endl;
     }
+
+    light = new Mesh();
+    loaded = light->CreateMeshFromOBJ("Models/cube.obj");
+
+    if (!loaded)
+    {
+        std::cout << "Failed to load light" << std::endl;
+    }
 }
 
-glm::vec3 lightColour = glm::vec3(0.0f, 1.0f, 1.0f);
+void checkMouse()
+{
+    double mouseX, mouseY;
+
+    glfwGetCursorPos(mainWindow.getWindow(), &mouseX, &mouseY);
+
+    static float lastX = mouseX;
+    static float lastY = mouseY;
+
+    float xOffset = mouseX - lastX;
+    float yOffset = lastY - mouseY;
+
+    lastX = mouseX;
+    lastY = mouseY;
+
+    float sensitivity = 0.1f;
+    xOffset *= sensitivity;
+    yOffset *= sensitivity;
+
+    yaw += xOffset;
+    pitch += yOffset;
+
+    if (pitch > 89.0f)
+        pitch = 89.0f;
+    if (pitch < -89.0f)
+        pitch = -89.0f;
+}
+
+glm::vec3 lightColour = glm::vec3(1.0f, 1.0f, 1.0f);
+glm::vec3 lightPos = glm::vec3(0.0f, 0.0f, 10.0f);
+glm::vec3 viewPos = glm::vec3(0.0f, 0.0f, 0.0f);
 
 int main()
 {
@@ -96,6 +144,17 @@ int main()
     // CreateTriangle();
     CreateOBJ();
     CreateShaders();
+
+    float deltaTime = 0.0f;
+    float lastTime = 0.0f;
+
+    glm::vec3 cameraPos = glm::vec3(1.0f, 0.5f, 2.0f);
+    glm::vec3 cameraTarget = glm::vec3(0.0f, -0.3f, -1.0f);
+    glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f); // global up
+
+    glm::vec3 cameraDirection = glm::normalize(cameraTarget - cameraPos);
+    glm::vec3 cameraRight = glm::normalize(glm::cross(cameraDirection, up));
+    glm::vec3 cameraUp = glm::normalize(glm::cross(cameraRight, cameraDirection)); // camera up
 
     GLuint uniformModel = 0;
     GLuint uniformView = 0;
@@ -141,8 +200,39 @@ int main()
     // Loop until window closed
     while (!mainWindow.getShouldClose())
     {
+        float currentTime = static_cast<float>(glfwGetTime());
+        deltaTime = currentTime - lastTime;
+        lastTime = currentTime;
+
         // Get + Handle user input events
         glfwPollEvents();
+        checkMouse();
+
+        glm::vec3 direction;
+        direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+        direction.y = sin(glm::radians(pitch));
+        direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+        cameraDirection = glm::normalize(direction);
+
+        if (glfwGetKey(mainWindow.getWindow(), GLFW_KEY_W) == GLFW_PRESS)
+        {
+            cameraPos += cameraDirection * 5.0f * deltaTime;
+        }
+        if (glfwGetKey(mainWindow.getWindow(), GLFW_KEY_S) == GLFW_PRESS)
+        {
+            cameraPos -= cameraDirection * 5.0f * deltaTime;
+        }
+        if (glfwGetKey(mainWindow.getWindow(), GLFW_KEY_A) == GLFW_PRESS)
+        {
+            cameraPos -= cameraRight * 5.0f * deltaTime;
+        }
+        if (glfwGetKey(mainWindow.getWindow(), GLFW_KEY_D) == GLFW_PRESS)
+        {
+            cameraPos += cameraRight * 5.0f * deltaTime;
+        }
+
+        cameraRight = glm::normalize(glm::cross(cameraDirection, up));
+        cameraUp = glm::normalize(glm::cross(cameraRight, cameraDirection));
 
         // Clear window
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -156,14 +246,6 @@ int main()
 
         glm::mat4 view(1.0f);
 
-        glm::vec3 cameraPos = glm::vec3(1.0f, 0.5f, 2.0f);
-        glm::vec3 cameraTarget = glm::vec3(0.0f, -0.3f, -1.0f);
-        glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f); // global up
-
-        glm::vec3 cameraDirection = glm::normalize(cameraTarget - cameraPos);
-        glm::vec3 cameraRight = glm::normalize(glm::cross(cameraDirection, up));
-        glm::vec3 cameraUp = glm::normalize(glm::cross(cameraRight, cameraDirection)); // camera up
-        
         view = glm::lookAt(cameraPos, cameraPos + cameraDirection, cameraUp);
 
         // Object
@@ -183,7 +265,14 @@ int main()
 
         // Light
         glUniform3fv(shaderList[0]->GetUniformLocation("lightColour"), 1, (GLfloat *)&lightColour);
+        glUniform3fv(shaderList[0]->GetUniformLocation("lightPos"), 1, (GLfloat *)&lightPos);
+        glUniform3fv(shaderList[0]->GetUniformLocation("viewPos"), 1, (GLfloat *)&cameraPos);
 
+        lightPos.x = 1.0f + sin(glfwGetTime()) * 2.0f;
+        lightPos.y = sin(glfwGetTime() / 2.0f) * 1.0f;
+        lightPos.z = 0.0f;
+
+        // Model mesh render
         for (int i = 0; i < 10; i++)
         {
             glm::mat4 model(1.0f);
@@ -205,6 +294,24 @@ int main()
 
             meshList[i]->RenderMesh();
         }
+
+        // Light mesh render
+        shaderList[1]->UseShader();
+        uniformModel = shaderList[1]->GetUniformLocation("model");
+        uniformView = shaderList[1]->GetUniformLocation("view");
+        uniformProjection = shaderList[1]->GetUniformLocation("projection");
+
+        glm::mat4 model(1.0f);
+
+        model = glm::translate(model, lightPos);
+        model = glm::scale(model, glm::vec3(0.2f, 0.2f, 0.2f));
+
+        glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+        glUniformMatrix4fv(uniformView, 1, GL_FALSE, glm::value_ptr(view));
+        glUniformMatrix4fv(uniformProjection, 1, GL_FALSE, glm::value_ptr(projection));
+
+        glUniform3fv(shaderList[1]->GetUniformLocation("lightColour"), 1, glm::value_ptr(lightColour));
+        light->RenderMesh();
 
         glUseProgram(0);
         // end draw
